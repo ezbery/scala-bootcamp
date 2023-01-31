@@ -116,9 +116,17 @@ object ControlStructures {
   // A function which calls itself is called a recursive function. This is a commonly used way how to
   // express looping constructs in Functional Programming languages.
 
-  def sum1(list: List[Int]): Int =
-    if (list.isEmpty) 0
-    else list.head + sum1(list.tail)
+  def sum1(list: List[Int]): Int = list match {
+    case Nil => 0
+    case head :: tail => head + sum1(tail)
+  }
+  //    if (list.isEmpty) 0
+  //    else list.head + sum1(list.tail)
+
+  def sumTail(list: List[Int], acc: Int = 0): Int = list match {
+    case Nil => acc
+    case head :: tail => sumTail(tail, acc + head)
+  }
 
   // Question. What are the risks of List#head and List#tail? How can you refactor `sum1` to avoid these invocations?
 
@@ -153,14 +161,18 @@ object ControlStructures {
   //
   // Thus `applyNTimesForInts(_ + 1, 4)(3)` should return `((((3 + 1) + 1) + 1) + 1)` or `7`.
   def applyNTimesForInts(f: Int => Int, n: Int): Int => Int = { x: Int =>
-    f(x + n) // replace with a correct implementation
+    @tailrec
+    def loop(n: Int, acc: Int): Int = n match {
+      case 0 => acc
+      case _ => loop(n - 1, f(acc))
+    }
+
+    loop(n, x)
   }
 
   // Exercise: Convert the function `applyNTimesForInts` into a polymorphic function `applyNTimes`:
   def applyNTimes[A](f: A => A, n: Int): A => A = { x: A =>
-    // replace with correct implementation
-    println(n)
-    f(x)
+    (0 until n).foldLeft(x)((acc, _) => f(acc))
   }
 
   // `map`, `flatMap` and `filter` are not control structures, but methods that various collections (and
@@ -280,8 +292,19 @@ object ControlStructures {
     // findUserId to find UserId, validateAmount on the amount, findBalance to find previous
     // balances, and then updateAccount for both userId-s (with a positive and negative
     // amount, respectively):
-    println(s"$service, $fromUserWithName, $toUserWithName, $amount")
-    ???
+    //    println(s"$service, $fromUserWithName, $toUserWithName, $amount")
+    import service._
+    for {
+      _ <- validateUserName(fromUserWithName)
+      _ <- validateUserName(toUserWithName)
+      fromUserId <- findUserId(fromUserWithName)
+      toUserId <- findUserId(toUserWithName)
+      _ <- validateAmount(amount)
+      fromBalance <- findBalance(fromUserId)
+      toBalance <- findBalance(toUserId)
+      newFromAmount <- updateAccount(fromUserId, fromBalance, -amount)
+      newToAmount <- updateAccount(toUserId, toBalance, amount)
+    } yield (newFromAmount, newToAmount)
   }
 
   // Question. What are the questions would you ask - especially about requirements - before implementing
@@ -294,14 +317,17 @@ object ControlStructures {
   // Exercise:
   //
   // Given:
-  //  A = Set(0, 1, 2)
-  //  B = Set(true, false)
+  val A = Set(0, 1, 2)
+  val B = Set(true, false)
   //
   // List all the elements in `A * B`.
   //
   // Use a "for comprehension" in your solution.
 
-  val AProductB: Set[(Int, Boolean)] = Set()
+  val AProductB: Set[(Int, Boolean)] = for {
+    a <- A
+    b <- B
+  } yield (a, b)
 
   // Exercise:
   //
@@ -313,7 +339,7 @@ object ControlStructures {
   //
   // Use "map" and `++` (`Set` union operation) in your solution.
 
-  val ASumB: Set[Either[Int, Boolean]] = Set()
+  val ASumB: Set[Either[Int, Boolean]] = A.map(a => Left(a)) ++ B.map(b => Right(b))
 
   // Scala inherits the standard try-catch-finally construct from Java:
   def printFile(fileName: String): Unit = {
