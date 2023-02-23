@@ -1,25 +1,23 @@
 package com.evolutiongaming.bootcamp.implicits
 
-import akka.cluster.client.protobuf.msg.ClusterClientMessages.Contacts
-
 object ContextBounds {
 
   object Exercise1 {
 
     // Let's revisit some functions we implemented while studying implicit classes:
-    def concat(a: Int, b: Int): Int = ???
+    def concat(a: Int, b: Int): Int = s"$a$b".toInt
 
     // Exercise 1: Implement repeat functions for various types.
     // For `Int` using `concat` function above. For others, use built-in methods.
 
     // `repeat(72, 3)` should return `727272`
-    def repeat(a: Int, times: Int): Int = ???
+    def repeat(a: Int, times: Int): Int = (1 until times).foldLeft(a) { case (acc, _) => concat(acc, a) }
 
     // `repeat("Scala", 3)` should return `"ScalaScalaScala"`
-    def repeat(a: String, times: Int): String = ???
+    def repeat(a: String, times: Int): String = (1 until times).foldLeft(a) { case (acc, _) => acc ++ a }
 
     // `repeat(List(10, 20, 30), 3)` should return `List(10, 20, 30, 10, 20, 30, 10, 20, 30)`
-    def repeat(a: List[Int], times: Int): List[Int] = ???
+    def repeat(a: List[Int], times: Int): List[Int] = (1 until times).foldLeft(a) { case (acc, _) => acc ++ a }
 
   }
 
@@ -46,20 +44,22 @@ object ContextBounds {
   trait Concatenable[T] {
     def concat(a: T, b: T): T
   }
+
   object Concatenable {
     val forInt: Concatenable[Int] = new Concatenable[Int] {
-      def concat(a: Int, b: Int): Int = ???
+      def concat(a: Int, b: Int): Int = s"$a$b".toInt
     }
     val forString: Concatenable[String] = new Concatenable[String] {
-      def concat(a: String, b: String): String = ???
+      def concat(a: String, b: String): String = a ++ b
     }
     val forListInt: Concatenable[List[Int]] = new Concatenable[List[Int]] {
-      def concat(a: List[Int], b: List[Int]): List[Int] = ???
+      def concat(a: List[Int], b: List[Int]): List[Int] = a ++ b
     }
   }
 
   object Exercise3 {
-    def repeat[T](a: T, times: Int, concatenable: Concatenable[T]): T = ???
+    def repeat[T](a: T, times: Int, concatenable: Concatenable[T]): T =
+      (1 until times).foldLeft(a) { case (acc, _) => concatenable.concat(acc, a) }
   }
 
   // Do you find this way convenient / readable? What else we could do to
@@ -79,6 +79,7 @@ object ContextBounds {
   object Exercise5 {
 
     def repeatTenTimes[T](a: T)(implicit concatenable: Concatenable[T]): Unit = ???
+
     def repeatTenTimesIfTrue[T](condition: Boolean)(a: T)(implicit concatenable: Concatenable[T]): Unit = ???
 
   }
@@ -92,11 +93,12 @@ object ContextBounds {
   //
   // The following two methods are exactly the same:
   def method1[T](a: T)(implicit concatenable: Concatenable[T]): Unit = ()
+
   def method2[T: Concatenable](a: T): Unit = ()
 
   // Exercise 6: Use context bound to tidy up `repeat` method above
   object Exercise6 {
-     // def repeat[T: ...](...): T = ???
+    // def repeat[T: ...](...): T = ???
   }
 
   // Do you find this way convenient / readable? What else we could do to

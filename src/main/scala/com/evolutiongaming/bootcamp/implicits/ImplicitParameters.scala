@@ -25,8 +25,11 @@ object ImplicitParameters {
       */
     trait WalletContext {
       def create: Unit
+
       def read: Option[BigDecimal]
+
       def update(amount: BigDecimal): Unit
+
       def delete: Unit
     }
 
@@ -35,26 +38,42 @@ object ImplicitParameters {
     // - Implement `AwardService` in terms of `CreditService` and `DebitService` calls.
     class CreditService {
       /** Gives money to wallet, creates a wallet if does not exist yet */
-      def credit(context: WalletContext, amount: BigDecimal): Unit = ???
+      def credit(context: WalletContext, amount: BigDecimal): Unit =
+        context.read match {
+          case Some(walletAmount) => context.update(walletAmount + amount)
+          case None => context.create; context.update(amount)
+        }
     }
+
     class DebitService {
       /** Removes money from wallet */
-      def debit(context: WalletContext, amount: BigDecimal): Unit = ???
+      def debit(context: WalletContext, amount: BigDecimal): Unit =
+        context.read match {
+          case Some(walletAmount) =>
+            if (walletAmount >= amount) context.update(walletAmount - amount)
+            else throw new IllegalArgumentException()
+          case None => throw new IllegalArgumentException()
+        }
     }
+
     class TransferService(creditService: CreditService, debitService: DebitService) {
       /** Either does credit or debit depending on the amount */
-      def transfer(context: WalletContext, amount: BigDecimal): Unit = ???
+      def transfer(context: WalletContext, amount: BigDecimal): Unit =
+        if (amount > 0) creditService.credit(context, amount)
+        else debitService.debit(context, -amount)
     }
 
     // This is the way it could be called:
     trait WalletRepository {
       def getWallet(userId: String): WalletContext
     }
+
     class WalletController(walletRepository: WalletRepository, transferService: TransferService) {
       def bet(userId: String, amount: BigDecimal): Unit = {
         val walletContext = walletRepository.getWallet(userId)
         transferService.transfer(walletContext, -amount)
       }
+
       def award(userId: String, amount: BigDecimal): Unit = {
         val walletContext = walletRepository.getWallet(userId)
         transferService.transfer(walletContext, amount)
@@ -89,17 +108,22 @@ object ImplicitParameters {
 
     trait WalletContext {
       def create: Unit
+
       def read: Option[BigDecimal]
+
       def update(amount: BigDecimal): Unit
+
       def delete: Unit
     }
 
     class CreditService {
       def credit(amount: BigDecimal)(context: WalletContext): Unit = ???
     }
+
     class DebitService {
       def debit(amount: BigDecimal)(context: WalletContext): Unit = ???
     }
+
     class TransferService(creditService: CreditService, debitService: DebitService) {
       def transfer(amount: BigDecimal)(context: WalletContext): Unit = ???
     }
@@ -108,11 +132,13 @@ object ImplicitParameters {
     trait WalletRepository {
       def getWallet(userId: String): WalletContext
     }
+
     class WalletController(walletRepository: WalletRepository, transferService: TransferService) {
       def bet(userId: String, amount: BigDecimal): Unit = {
         val walletContext = walletRepository.getWallet(userId)
         transferService.transfer(-amount)(walletContext)
       }
+
       def award(userId: String, amount: BigDecimal): Unit = {
         val walletContext = walletRepository.getWallet(userId)
         transferService.transfer(amount)(walletContext)
@@ -152,33 +178,42 @@ object ImplicitParameters {
 
     trait WalletContext {
       def create: Unit
+
       def read: Option[BigDecimal]
+
       def update(amount: BigDecimal): Unit
+
       def delete: Unit
     }
 
     class CreditService {
-      def credit(amount: BigDecimal)(context: WalletContext): Unit = ???
+      def credit(amount: BigDecimal)(implicit context: WalletContext): Unit = ???
     }
+
     class DebitService {
-      def debit(amount: BigDecimal)(context: WalletContext): Unit = ???
+      def debit(amount: BigDecimal)(implicit context: WalletContext): Unit = ???
     }
+
     class TransferService(creditService: CreditService, debitService: DebitService) {
-      def transfer(amount: BigDecimal)(context: WalletContext): Unit = ???
+      def transfer(amount: BigDecimal)(implicit context: WalletContext): Unit =
+        if (amount > 0) creditService.credit(amount)
+        else debitService.debit(-amount)
     }
 
     // This is the way it could be called:
     trait WalletRepository {
       def getWallet(userId: String): WalletContext
     }
+
     class WalletController(walletRepository: WalletRepository, transferService: TransferService) {
       def bet(userId: String, amount: BigDecimal): Unit = {
-        val walletContext = walletRepository.getWallet(userId)
-        transferService.transfer(-amount)(walletContext)
+        implicit val walletContext = walletRepository.getWallet(userId)
+        transferService.transfer(-amount)
       }
+
       def award(userId: String, amount: BigDecimal): Unit = {
-        val walletContext = walletRepository.getWallet(userId)
-        transferService.transfer(amount)(walletContext)
+        implicit val walletContext = walletRepository.getWallet(userId)
+        transferService.transfer(amount)
       }
     }
 
